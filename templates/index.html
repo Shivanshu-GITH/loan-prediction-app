@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Approval Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+
+    <header class="masthead">
+        <div>
+            <h1>Loan Approval Prediction</h1>
+            <p class="sub">An explainable credit-decision model. Every prediction is
+               accompanied by the rules applied and the data behind its confidence.</p>
+        </div>
+        <div class="brand">
+            <span class="brand-name">Shivanshu Tiwari</span>
+            <span class="brand-roll">Roll No. 2400270130173</span>
+            <span class="brand-model">Decision Tree Classifier</span>
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <!-- ------------------------------------------------------ -->
+        <!-- Input panel (always visible)                           -->
+        <!-- ------------------------------------------------------ -->
+        <section class="panel form-panel">
+            <h2 class="panel-title">Applicant Details</h2>
+            <form method="POST" action="/">
+                <label>Age (years)
+                    <input type="number" name="age" min="18" max="80"
+                           value="{{ form.age }}" required>
+                </label>
+                <label>Annual Income (Rs)
+                    <input type="number" name="income" min="0" max="2000000" step="1000"
+                           value="{{ form.income }}" required>
+                </label>
+                <label>Loan Amount (Rs)
+                    <input type="number" name="loan_amount" min="500" max="1000000" step="500"
+                           value="{{ form.loan_amount }}" required>
+                </label>
+                <label>Credit Score
+                    <input type="number" name="credit_score" min="300" max="850"
+                           value="{{ form.credit_score }}" required>
+                </label>
+                <button type="submit">Predict</button>
+            </form>
+            {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+            <div class="overview">
+                <div class="overview-label">Training data</div>
+                <div class="stat"><span>Total applicants</span><b>{{ "{:,}".format(overview.total) }}</b></div>
+                <div class="stat"><span>Approval rate</span><b>{{ overview.approval_rate }}%</b></div>
+                <div class="stat"><span>Median income</span><b>Rs {{ overview.median_income }}</b></div>
+                <div class="stat"><span>Median credit score</span><b>{{ overview.median_credit }}</b></div>
+            </div>
+        </section>
+
+        <!-- ------------------------------------------------------ -->
+        <!-- Results panel                                          -->
+        <!-- ------------------------------------------------------ -->
+        <section class="panel result-panel">
+            {% if not result %}
+                <div class="placeholder">
+                    <p>Enter the applicant's details on the left and select
+                       <b>Predict</b> to generate a decision and its full explanation.</p>
+                </div>
+            {% else %}
+                <!-- Verdict -->
+                <div class="verdict {{ 'approve' if result.approved else 'reject' }}">
+                    <span class="verdict-word">
+                        {{ 'Loan Approved' if result.approved else 'Loan Rejected' }}
+                    </span>
+                    <span class="verdict-conf">Model confidence {{ result.confidence }}%</span>
+                </div>
+
+                <!-- Probability bar -->
+                <div class="section-label">Approval probability</div>
+                <div class="gauge">
+                    <div class="gauge-track">
+                        <div class="gauge-fill {{ 'approve' if result.approved else 'reject' }}"
+                             style="width: {{ result.prob_approve }}%;"></div>
+                        <div class="gauge-mark" style="left: 50%;"></div>
+                    </div>
+                    <div class="gauge-scale">
+                        <span>0%</span>
+                        <span>threshold 50%</span>
+                        <span>100%</span>
+                    </div>
+                    <div class="gauge-value">{{ result.prob_approve }}% likely to be approved</div>
+                </div>
+
+                <!-- Comparison -->
+                <div class="section-label">Applicant vs. population (percentile)</div>
+                <div class="bars">
+                    {% for c in result.comparisons %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ c.label }}</span>
+                        <div class="bar-track">
+                            <div class="bar-fill {{ 'high' if c.pct >= 50 else 'low' }}"
+                                 style="width: {{ c.pct }}%;"></div>
+                            <div class="bar-median"></div>
+                        </div>
+                        <span class="bar-val">{{ c.pct }}th</span>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Basis -->
+                <div class="section-label">Basis for the decision</div>
+                <p class="note">{{ result.summary }}</p>
+
+                <div class="section-label">Rules applied, in order</div>
+                <ol class="rules">
+                    {% for r in result.reasons %}
+                    <li>{{ r }}</li>
+                    {% endfor %}
+                </ol>
+
+                <div class="section-label">How the confidence is derived</div>
+                <p class="note">This applicant falls into a group of
+                    <b>{{ result.n_similar }}</b> training applicants that satisfy the
+                    same rules above. Within that group, the historical approval rate is
+                    <b>{{ result.leaf_share }}%</b> &mdash; which is exactly the probability
+                    the model reports. The confidence is grounded in observed outcomes,
+                    not an arbitrary score.</p>
+
+                <!-- Feature importance -->
+                <details>
+                    <summary>Feature importance across the model</summary>
+                    <div class="bars">
+                        {% for f in result.importances %}
+                        <div class="bar-row">
+                            <span class="bar-label">{{ f.label }}</span>
+                            <div class="bar-track">
+                                <div class="bar-fill high" style="width: {{ f.pct }}%;"></div>
+                            </div>
+                            <span class="bar-val">{{ f.pct }}%</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <p class="caption">Income and Loan Amount are the dominant drivers of the
+                       model's decisions; Age and Credit Score play smaller roles in this dataset.</p>
+                </details>
+
+                <details>
+                    <summary>Applicant input summary</summary>
+                    <table class="summary-table">
+                        <tr><th>Age</th><td>{{ result.inputs.Age }}</td></tr>
+                        <tr><th>Annual Income</th><td>{{ result.inputs.Income }}</td></tr>
+                        <tr><th>Loan Amount</th><td>{{ result.inputs.LoanAmount }}</td></tr>
+                        <tr><th>Credit Score</th><td>{{ result.inputs.CreditScore }}</td></tr>
+                    </table>
+                </details>
+            {% endif %}
+        </section>
+
+    </div>
+
+    <footer class="foot">
+        Decision Tree Classifier trained on {{ "{:,}".format(overview.total) }} loan records
+        &nbsp;·&nbsp; AI &amp; DS Internship and Training Program
+    </footer>
+
+</div>
+</body>
+</html>

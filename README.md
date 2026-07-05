@@ -16,7 +16,9 @@ Decision Tree Classifier.
 |---|---|
 | `loan_data.csv` | Dataset (45,000 loan records) |
 | `train_model.py` | Preprocessing, training, evaluation — saves the model |
-| `app.py` | Deployment: Streamlit web application |
+| `app.py` | Deployment: **Flask** web application |
+| `templates/index.html` | Web page template (form + explained result) |
+| `static/style.css` | Stylesheet for the web application |
 | `loan_model.pkl` | Trained Decision Tree model |
 | `scaler.pkl` | Fitted StandardScaler |
 | `confusion_matrix.png` | Evaluation: confusion matrix plot |
@@ -61,8 +63,15 @@ Decision Tree Classifier.
 Most important features: **Income (65%)** and **LoanAmount (30%)**.
 
 ### 4. Deployment
-Interactive Streamlit web app: enter applicant details, get an
-Approved/Rejected prediction with a confidence score.
+Interactive **Flask** web app. Enter applicant details and receive an
+Approved/Rejected decision that is fully explained:
+
+- **Approval probability** shown on a confidence gauge
+- **Applicant vs. population** percentile bars against all 45,000 records
+- **Rules applied, in order** — the exact decision-tree path, in plain language
+- **How the confidence is derived** — tied to the historical approval rate of
+  similar training applicants (not an arbitrary score)
+- **Feature importance** across the model
 
 ## How to Run
 
@@ -74,7 +83,7 @@ pip install -r requirements.txt
 python train_model.py
 
 # 3. Launch the web application
-streamlit run app.py
+python app.py
 ```
 
-The app opens in your browser at `http://localhost:8501`.
+Then open your browser at **http://127.0.0.1:5000**.
